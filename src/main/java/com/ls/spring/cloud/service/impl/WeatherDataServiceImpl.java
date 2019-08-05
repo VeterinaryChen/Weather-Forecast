@@ -95,7 +95,35 @@ public class WeatherDataServiceImpl implements WeatherDataService {
             }finally {
                 Logger.error("Redis has no Data!");
             }
-            }
+        }
             return weatherResponse;
+    }
+
+    @Override
+    public void SyncDataByCityId (String cityId) {
+        String uri = WEATHER_URI + "citykey=" + cityId;
+        this.saveWeatherData(uri);
+    }
+
+    /**
+     * 功能描述: 把天气数据放在缓存中
+     * @auther: JeffChen
+     * @date: 2019/8/5 18:58
+     */
+    public void saveWeatherData(String uri){
+        String key = uri;
+        String strbody = null;
+        ValueOperations<String,String> ops = stringRedisTemplate.opsForValue();
+
+
+        ResponseEntity<String> respString = restTemplate.getForEntity(uri, String.class);
+
+        if (respString.getStatusCodeValue() == 200) {
+            strbody = respString.getBody();
+        }
+
+        // 将数据写入缓存
+        ops.set(key, strbody, TIME_OUT, TimeUnit.SECONDS);
+
     }
 }

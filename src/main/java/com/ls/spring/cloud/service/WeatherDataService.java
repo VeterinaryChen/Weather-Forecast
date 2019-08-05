@@ -22,4 +22,8 @@ public interface WeatherDataService {
      * @date: 2019/8/4 19:10
      */
     WeatherResponse getDataByCityName(String cityName);
+
+    void SyncDataByCityId(String cityId);
+
+    void saveWeatherData(String uri);
 }
