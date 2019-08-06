@@ -1,8 +1,8 @@
 package com.ls.spring.cloud.service.impl;
 
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.util.concurrent.TimeUnit;
+
 import com.ls.spring.cloud.service.WeatherDataService;
 import com.ls.spring.cloud.vo.WeatherResponse;
 import org.slf4j.Logger;
@@ -14,17 +14,21 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.io.IOException;
-import java.util.concurrent.TimeUnit;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * @author: jeffchen
+ * WeatherDataService 实现.
+ *
+ * @since 1.0.0 2017年11月22日
+ * @author <a href="https://waylau.com">Way Lau</a>
  */
 @Service
 public class WeatherDataServiceImpl implements WeatherDataService {
-    private final static Logger Logger = LoggerFactory.getLogger(WeatherDataServiceImpl.class);
+    private final static Logger logger = LoggerFactory.getLogger(WeatherDataServiceImpl.class);
+
     private static final String WEATHER_URI = "http://wthrcdn.etouch.cn/weather_mini?";
-    private static final long TIME_OUT = 10L;
+
+    private static final long TIME_OUT = 1800L; // 1800s
 
     @Autowired
     private RestTemplate restTemplate;
@@ -32,98 +36,76 @@ public class WeatherDataServiceImpl implements WeatherDataService {
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
 
-    /**
-     * 功能描述: 根据城市 ID 查询城市天气
-     *
-     * @param cityId
-     * @auther: JeffChen
-     * @date: 2019/8/4 19:09
-     */
     @Override
-    public WeatherResponse getDataByCityId (String cityId) {
-        // http://wthrcdn.etouch.cn/weather_mini?citykey=?
-        String url = WEATHER_URI + "citykey=" + cityId;
-
-        return this.doGetWeather(url);
-
+    public WeatherResponse getDataByCityId(String cityId) {
+        String uri = WEATHER_URI + "citykey=" + cityId;
+        return this.doGetWeahter(uri);
     }
 
-    /**
-     * 功能描述: 根据城市名称查询城市天气
-     *
-     * @param cityName
-     * @auther: JeffChen
-     * @date: 2019/8/4 19:10
-     */
     @Override
-    public WeatherResponse getDataByCityName (String cityName) {
-        String url = WEATHER_URI + "city=" + cityName;
-        return this.doGetWeather(url);
-    }
-
-    private WeatherResponse doGetWeather (String uri) {
-        String key = uri;
-        String strbody = null;
-        WeatherResponse weatherResponse = null;
-        ObjectMapper mapper = new ObjectMapper();
-        // 先查缓存，再调接口
-        ValueOperations <String,String> ops = stringRedisTemplate.opsForValue();
-        if (stringRedisTemplate.hasKey(key)){
-            Logger.info("Redis has Data!");
-            strbody = ops.get(key);
-        }
-        else {
-
-            ResponseEntity<String> respString = restTemplate.getForEntity(uri, String.class);
-
-            if (respString.getStatusCodeValue() == 200) {
-                strbody = respString.getBody();
-
-            }
-
-            // 将数据写入缓存
-            ops.set(key, strbody, TIME_OUT, TimeUnit.SECONDS);
-
-            try {
-                weatherResponse = mapper.readValue(strbody, WeatherResponse.class);
-            } catch (JsonParseException e) {
-            e.printStackTrace();
-        } catch (JsonMappingException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }finally {
-                Logger.error("Redis has no Data!");
-            }
-        }
-            return weatherResponse;
+    public WeatherResponse getDataByCityName(String cityName) {
+        String uri = WEATHER_URI + "city=" + cityName;
+        return this.doGetWeahter(uri);
     }
 
     @Override
     public void SyncDataByCityId (String cityId) {
-        String uri = WEATHER_URI + "citykey=" + cityId;
-        this.saveWeatherData(uri);
+
     }
 
-    /**
-     * 功能描述: 把天气数据放在缓存中
-     * @auther: JeffChen
-     * @date: 2019/8/5 18:58
-     */
-    public void saveWeatherData(String uri){
+    private WeatherResponse doGetWeahter(String uri) {
         String key = uri;
-        String strbody = null;
-        ValueOperations<String,String> ops = stringRedisTemplate.opsForValue();
+        String strBody = null;
+        ObjectMapper mapper = new ObjectMapper();
+        WeatherResponse resp = null;
+        ValueOperations<String, String>  ops = stringRedisTemplate.opsForValue();
+        // 先查缓存，缓存有的取缓存中的数据
+        if (stringRedisTemplate.hasKey(key)) {
+            logger.info("Redis has data");
+            strBody = ops.get(key);
+        } else {
+            logger.info("Redis don't has data");
+            // 缓存没有，再调用服务接口来获取
+            ResponseEntity<String> respString = restTemplate.getForEntity(uri, String.class);
+
+            if (respString.getStatusCodeValue() == 200) {
+                strBody = respString.getBody();
+            }
+
+            // 数据写入缓存
+            ops.set(key, strBody, TIME_OUT, TimeUnit.SECONDS);
+        }
+
+        try {
+            resp = mapper.readValue(strBody, WeatherResponse.class);
+        } catch (IOException e) {
+            //e.printStackTrace();
+            logger.error("Error!",e);
+        }
+
+        return resp;
+    }
 
 
+    /**
+     * 把天气数据放在缓存
+     * @param uri
+     */
+    public void saveWeatherData (String uri) {
+        String key = uri;
+        String strBody = null;
+        ValueOperations<String, String>  ops = stringRedisTemplate.opsForValue();
+
+        // 调用服务接口来获取
         ResponseEntity<String> respString = restTemplate.getForEntity(uri, String.class);
 
         if (respString.getStatusCodeValue() == 200) {
-            strbody = respString.getBody();
+            strBody = respString.getBody();
         }
 
-        // 将数据写入缓存
-        ops.set(key, strbody, TIME_OUT, TimeUnit.SECONDS);
+        // 数据写入缓存
+        ops.set(key, strBody, TIME_OUT, TimeUnit.SECONDS);
 
     }
+
 }

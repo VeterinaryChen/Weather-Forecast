@@ -17,19 +17,21 @@ public class XmlBuilder {
      * @auther: JeffChen
      * @date: 2019/8/5 18:34
      */
-    public static Object xmlStrToObject(Class<?> clazz , String xmlStr) throws Exception{
+    public static Object xmlStrToOject(Class<?> clazz, String xmlStr) throws Exception {
         Object xmlObject = null;
         Reader reader = null;
         JAXBContext context = JAXBContext.newInstance(clazz);
 
-        Unmarshaller unmarshaller =  context.createUnmarshaller();
+        // XML 转为对象的接口
+        Unmarshaller unmarshaller = context.createUnmarshaller();
 
         reader = new StringReader(xmlStr);
         xmlObject = unmarshaller.unmarshal(reader);
 
-        if(null != reader){
+        if (null != reader) {
             reader.close();
         }
+
         return xmlObject;
     }
 

@@ -46,7 +46,7 @@ public class CityDataServiceImpl implements CityDataService {
         bf.close();
 
         // 转换XML为Java对象
-        CityList cityList = (CityList) XmlBuilder.xmlStrToObject(CityList.class, buffer.toString());
+        CityList cityList = (CityList) XmlBuilder.xmlStrToOject(CityList.class, buffer.toString());
 
         return cityList.getCityList();
     }

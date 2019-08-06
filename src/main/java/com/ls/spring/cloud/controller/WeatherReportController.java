@@ -26,14 +26,11 @@ public class WeatherReportController {
     private CityDataService cityDataService;
 
     @GetMapping("/cityId/{cityId}")
-    public ModelAndView getReportByCityId(@PathVariable("cityId") String cityId , Model model) throws Exception {
-
-
-        model.addAttribute("title","天气预报");
-        model.addAttribute("cityId",cityId);
-        model.addAttribute("cityList",cityDataService.listCity());
-        model.addAttribute("report",weatherReportService.getDataByCityId(cityId));
-
-        return new ModelAndView("weather/report","reportModel",model);
+    public ModelAndView getReportByCityId(@PathVariable("cityId") String cityId, Model model) throws Exception {
+        model.addAttribute("title", "老卫的天气预报");
+        model.addAttribute("cityId", cityId);
+        model.addAttribute("cityList", cityDataService.listCity());
+        model.addAttribute("report", weatherReportService.getDataByCityId(cityId));
+        return new ModelAndView("weather/report", "reportModel", model);
     }
 }
